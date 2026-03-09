@@ -1,0 +1,110 @@
+// Prisma Schema for DP3AKB Vehicle Service Request Application
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Users table - Pegawai dan akses login
+model User {
+  id            String   @id @default(cuid())
+  nip           String?  @unique
+  namaLengkap   String
+  unitKerja     String?
+  role          Role     @default(pemohon)
+  passwordHash  String?  // Null untuk pemohon (hanya pakai nama)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  pengajuanSebagaiPemohon  Pengajuan[]  @relation("PemohonToPengajuan")
+  pengajuanSebagaiKasubag  Pengajuan[]  @relation("KasubagToPengajuan")
+  auditLogs                AuditLog[]
+
+  @@map("users")
+}
+
+enum Role {
+  pemohon
+  kasubag
+  admin
+}
+
+// Kendaraan table - Master Data Armada Motor Dinas
+model Kendaraan {
+  id                String          @id @default(cuid())
+  platNomor         String          @unique
+  merkModel         String
+  namaPengguna      String?
+  tahunPembelian    Int?
+  statusKendaraan   StatusKendaraan @default(aktif)
+  lastServiceDate   DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  pengajuan  Pengajuan[]
+
+  @@map("kendaraan")
+}
+
+enum StatusKendaraan {
+  aktif
+  service
+  afkir
+}
+
+// Pengajuan table - Transaksi Utama Surat Pengajuan Service
+model Pengajuan {
+  id                String          @id @default(cuid())
+  userId            String
+  kendaraanId       String
+  detailKerusakan   String
+  tanggalRencana    DateTime
+  status            StatusPengajuan @default(menunggu)
+  
+  // Tanda Tangan Digital (Nama Terang)
+  ttdPemohon        String?
+  ttdKasubag        String?
+  
+  // Audit & Catatan
+  alasanPenolakan   String?
+  tanggalPengajuan  DateTime        @default(now())
+  tanggalPutusan    DateTime?
+  kasubagId         String?
+  
+  // Relations
+  user       User      @relation("PemohonToPengajuan", fields: [userId], references: [id])
+  kasubag    User?     @relation("KasubagToPengajuan", fields: [kasubagId], references: [id])
+  kendaraan  Kendaraan @relation(fields: [kendaraanId], references: [id])
+  auditLogs  AuditLog[]
+
+  @@map("pengajuan")
+}
+
+enum StatusPengajuan {
+  menunggu
+  disetujui
+  ditolak
+}
+
+// Audit Logs table - Jejak Audit untuk Keamanan
+model AuditLog {
+  id           String   @id @default(cuid())
+  pengajuanId  String?
+  actorName    String
+  action       String   // SUBMIT, APPROVE, REJECT, etc.
+  ipAddress    String?
+  timestamp    DateTime @default(now())
+
+  // Relations
+  pengajuan  Pengajuan? @relation(fields: [pengajuanId], references: [id])
+  user       User?      @relation(fields: [userId], references: [id])
+  userId     String?
+
+  @@map("audit_logs")
+}
