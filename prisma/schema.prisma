@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-url      = env("postgres://b8100a5ca1529c6af3dce6faa2aba4d71f226a644c581eba23b20055ff3478d6:sk_wy3YwGpogW651UdzVy7jz@db.prisma.io:5432/postgres?sslmode=require")
+url      = env("POSTGRES_URL")
 }
 
 // Users table - Pegawai dan akses login
